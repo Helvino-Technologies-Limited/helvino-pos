@@ -21,6 +21,7 @@ const NAV_ITEMS = [
   { to: '/employees', icon: UserCog, label: 'Employees', minRole: 'manager' },
   { to: '/shifts', icon: Clock, label: 'Shifts', minRole: 'cashier' },
   { to: '/reports', icon: BarChart3, label: 'Reports', minRole: 'accountant' },
+  { to: '/branches', icon: Building2, label: 'Branches', minRole: 'super_admin' },
   { to: '/settings', icon: Settings, label: 'Settings', minRole: 'admin' },
 ];
 

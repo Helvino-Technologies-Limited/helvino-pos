@@ -101,6 +101,7 @@ app.use('/api/expenses',       require('./routes/expenses'));
 app.use('/api/reports',        require('./routes/reports'));
 app.use('/api/suppliers',      require('./routes/suppliers'));
 app.use('/api/services',       require('./routes/services'));
+app.use('/api/branches',         require('./routes/branches'));
 app.use('/api/settings',         require('./routes/settings'));
 app.use('/api/payments/mpesa', require('./routes/mpesa'));
 

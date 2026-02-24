@@ -163,3 +163,13 @@ export const settingsApi = {
   updateBusiness: (data) => api.put('/settings/business', data),
   updateReceipt:  (data) => api.put('/settings/receipt', data),
 };
+
+// ── Branches ──────────────────────────────────────────────────
+export const branchesApi = {
+  list:       ()     => api.get('/branches'),
+  get:        (id)   => api.get(`/branches/${id}`),
+  create:     (data) => api.post('/branches', data),
+  update:     (id, data) => api.put(`/branches/${id}`, data),
+  summary:    (id)   => api.get(`/branches/${id}/summary`),
+  comparison: (p)    => api.get('/reports/branches/comparison', { params: p }),
+};
