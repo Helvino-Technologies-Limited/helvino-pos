@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
+import { BottomNav } from './BottomNav';
 
 const PAGE_TITLES = {
   '/dashboard': 'Dashboard',
@@ -26,15 +27,20 @@ export const Layout = () => {
 
   return (
     <div className="flex h-screen overflow-hidden bg-surface-50">
+      {/* Sidebar — desktop only */}
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <Topbar onMenuClick={() => setSidebarOpen(true)} title={title} />
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 scrollbar-thin">
+        <main className="flex-1 overflow-y-auto scrollbar-thin pb-20 lg:pb-6">
           <div className="max-w-screen-2xl mx-auto animate-fade-in">
             <Outlet />
           </div>
         </main>
       </div>
+
+      {/* Bottom nav — mobile only */}
+      <BottomNav />
     </div>
   );
 };
