@@ -73,6 +73,9 @@ const getProduct = async (req, res) => {
   return success(res, result.rows[0]);
 };
 
+// Convert empty string to null for UUID/optional fields
+const nullify = (val) => (val === '' || val === undefined ? null : val);
+
 const createProduct = async (req, res) => {
   const {
     category_id, supplier_id, sku, barcode, name, description,
@@ -80,7 +83,10 @@ const createProduct = async (req, res) => {
     quantity = 0, reorder_level = 5, max_stock, notes
   } = req.body;
 
-  const generatedSKU = sku || generateSKU(name.substring(0,3));
+  if (!name) return badRequest(res, 'Product name is required');
+  if (!selling_price) return badRequest(res, 'Selling price is required');
+
+  const generatedSKU = nullify(sku) || generateSKU(name.substring(0, 3));
 
   const result = await query(
     `INSERT INTO products (
@@ -90,9 +96,21 @@ const createProduct = async (req, res) => {
     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
     RETURNING *`,
     [
-      req.user.branch_id, category_id, supplier_id, generatedSKU, barcode,
-      name, description, unit_of_measure, cost_price, selling_price,
-      student_price, quantity, reorder_level, max_stock, notes
+      req.user.branch_id,
+      nullify(category_id),
+      nullify(supplier_id),
+      generatedSKU,
+      nullify(barcode),
+      name,
+      nullify(description),
+      unit_of_measure,
+      cost_price || 0,
+      selling_price,
+      nullify(student_price),
+      quantity || 0,
+      reorder_level || 5,
+      nullify(max_stock),
+      nullify(notes)
     ]
   );
 
@@ -102,10 +120,13 @@ const createProduct = async (req, res) => {
 const updateProduct = async (req, res) => {
   const { id } = req.params;
   const fields = [
-    'category_id','supplier_id','barcode','name','description',
-    'unit_of_measure','cost_price','selling_price','student_price',
-    'reorder_level','max_stock','is_active','notes'
+    'category_id', 'supplier_id', 'barcode', 'name', 'description',
+    'unit_of_measure', 'cost_price', 'selling_price', 'student_price',
+    'reorder_level', 'max_stock', 'is_active', 'notes'
   ];
+
+  // UUID fields that must be nullified
+  const uuidFields = ['category_id', 'supplier_id'];
 
   const updates = [];
   const params = [];
@@ -114,7 +135,8 @@ const updateProduct = async (req, res) => {
   fields.forEach(field => {
     if (req.body[field] !== undefined) {
       updates.push(`${field} = $${i++}`);
-      params.push(req.body[field]);
+      const val = req.body[field];
+      params.push(uuidFields.includes(field) ? nullify(val) : val);
     }
   });
 
@@ -122,7 +144,7 @@ const updateProduct = async (req, res) => {
 
   params.push(id);
   const result = await query(
-    `UPDATE products SET ${updates.join(', ')} WHERE id = $${i} RETURNING *`,
+    `UPDATE products SET ${updates.join(', ')}, updated_at = NOW() WHERE id = $${i} RETURNING *`,
     params
   );
 
@@ -142,22 +164,22 @@ const adjustStock = async (req, res) => {
     let newQty;
     const adjQty = parseInt(quantity);
 
-    if (['add','return'].includes(adjustment_type)) {
+    if (['add', 'return'].includes(adjustment_type)) {
       newQty = product.quantity + adjQty;
-    } else if (['remove','damage'].includes(adjustment_type)) {
+    } else if (['remove', 'damage'].includes(adjustment_type)) {
       if (product.quantity < adjQty) throw { statusCode: 400, message: 'Insufficient stock', isOperational: true };
       newQty = product.quantity - adjQty;
     } else {
       newQty = adjQty;
     }
 
-    await client.query('UPDATE products SET quantity = $1 WHERE id = $2', [newQty, id]);
+    await client.query('UPDATE products SET quantity = $1, updated_at = NOW() WHERE id = $2', [newQty, id]);
 
     await client.query(
       `INSERT INTO stock_adjustments
        (branch_id, product_id, employee_id, adjustment_type, quantity_before, quantity_adjusted, quantity_after, reason, reference)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-      [req.user.branch_id, id, req.user.id, adjustment_type, product.quantity, adjQty, newQty, reason, reference]
+      [req.user.branch_id, id, req.user.id, adjustment_type, product.quantity, adjQty, newQty, reason, nullify(reference)]
     );
 
     return { product_id: id, quantity_before: product.quantity, quantity_after: newQty };
