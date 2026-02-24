@@ -65,7 +65,7 @@ const changePassword = async (req, res) => {
   const result = await query('SELECT password_hash FROM employees WHERE id = $1', [req.user.id]);
   const isValid = await bcrypt.compare(current_password, result.rows[0].password_hash);
   if (!isValid) return badRequest(res, 'Current password is incorrect');
-  const hash = await bcrypt.hash(new_password, 10);
+  const hash = await bcrypt.hash(new_password, 8);
   await query('UPDATE employees SET password_hash = $1 WHERE id = $2', [hash, req.user.id]);
   return success(res, {}, 'Password changed successfully');
 };

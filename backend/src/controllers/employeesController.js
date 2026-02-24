@@ -79,7 +79,7 @@ const createEmployee = async (req, res) => {
   if (role === 'super_admin' && req.user.role !== 'super_admin')
     return forbidden(res, 'Only super admins can create super admin accounts');
 
-  const hash = await bcrypt.hash(password, 10);
+  const hash = await bcrypt.hash(password, 8);
   const result = await query(
     `INSERT INTO employees (name, email, phone, role, branch_id, password_hash)
      VALUES ($1,$2,$3,$4,$5,$6)
@@ -134,7 +134,7 @@ const resetEmployeePassword = async (req, res) => {
   if (!canSeeAll && empResult.rows[0].branch_id !== req.user.branch_id)
     return forbidden(res, 'Access denied');
 
-  const hash = await bcrypt.hash(new_password, 10);
+  const hash = await bcrypt.hash(new_password, 8);
   await query('UPDATE employees SET password_hash = $1 WHERE id = $2', [hash, id]);
   return success(res, {}, 'Password reset successful');
 };
