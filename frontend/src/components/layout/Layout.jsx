@@ -6,18 +6,18 @@ import { BottomNav } from './BottomNav';
 
 const PAGE_TITLES = {
   '/dashboard': 'Dashboard',
-  '/pos': 'Point of Sale',
-  '/internet': 'Internet Sessions',
-  '/products': 'Products & Inventory',
+  '/pos':       'Point of Sale',
+  '/internet':  'Internet Sessions',
+  '/products':  'Products & Inventory',
   '/customers': 'Customers',
-  '/sales': 'Sales History',
-  '/expenses': 'Expenses',
+  '/sales':     'Sales History',
+  '/expenses':  'Expenses',
   '/suppliers': 'Suppliers',
-  '/services': 'Services',
+  '/services':  'Services',
   '/employees': 'Employees',
-  '/shifts': 'Shifts',
-  '/reports': 'Reports & Analytics',
-  '/settings': 'Settings',
+  '/shifts':    'Shifts',
+  '/reports':   'Reports & Analytics',
+  '/settings':  'Settings',
 };
 
 export const Layout = () => {
@@ -27,7 +27,7 @@ export const Layout = () => {
 
   return (
     <div className="flex h-screen overflow-hidden bg-surface-50">
-      {/* Sidebar — desktop only */}
+      {/* ONE sidebar — used by both desktop hamburger and mobile "More" */}
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
@@ -39,8 +39,8 @@ export const Layout = () => {
         </main>
       </div>
 
-      {/* Bottom nav — mobile only */}
-      <BottomNav />
+      {/* Bottom nav — mobile only, shares sidebar via onMoreClick */}
+      <BottomNav onMoreClick={() => setSidebarOpen(true)} />
     </div>
   );
 };
