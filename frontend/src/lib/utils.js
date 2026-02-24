@@ -83,3 +83,9 @@ export const getErrorMessage = (error) => {
 export const ROLES = ['super_admin','admin','manager','cashier','internet_operator','shift_supervisor','accountant'];
 export const EXPENSE_CATEGORIES = ['Rent','Electricity','Water','Internet','Supplies','Salaries','Maintenance','Marketing','Transport','Miscellaneous'];
 export const PAYMENT_METHODS = ['cash','mpesa','card','bank_transfer','account','credit','split'];
+
+// Generate a random SKU
+export const generateSKU = (prefix = "PRD") => {
+  const rand = Math.random().toString(36).substring(2, 7).toUpperCase();
+  return `${prefix}-${rand}`;
+};
