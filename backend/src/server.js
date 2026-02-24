@@ -87,6 +87,9 @@ app.get('/health', async (req, res) => {
   }
 });
 
+// Apply branch context after auth middleware on all API routes
+app.use('/api', (req, res, next) => { if (req.user) branchContext(req, res, next); else next(); });
+
 app.use('/api/auth',           require('./routes/auth'));
 app.use('/api/dashboard',      require('./routes/dashboard'));
 app.use('/api/products',       require('./routes/products'));

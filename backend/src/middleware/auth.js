@@ -59,3 +59,8 @@ const optionalAuth = async (req, res, next) => {
 };
 
 module.exports = { authenticate, optionalAuth };
+
+
+// Re-export branchContext for convenience
+const { branchContext } = require('./branchContext');
+module.exports.branchContext = branchContext;

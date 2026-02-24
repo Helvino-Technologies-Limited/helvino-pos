@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { Modal } from '../components/ui/Modal';
 import toast from 'react-hot-toast';
+import { useAuthStore } from '../store/authStore';
 
 const PAYMENT_METHODS = [
   { value: 'cash',  label: 'Cash',   icon: Banknote   },
@@ -85,6 +86,9 @@ const printReceipt = (receipt) => {
 
 export default function POS() {
   const queryClient = useQueryClient();
+  const { user, activeBranch } = useAuthStore();
+  const isSuperAdmin = user?.role === 'super_admin';
+  const effectiveBranch = isSuperAdmin ? activeBranch : { id: user?.branch_id, name: user?.branch_name };
   const [cart, setCart] = useState([]);
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState('products');
@@ -214,6 +218,7 @@ export default function POS() {
   });
 
   const completeSale = () => {
+    if (isSuperAdmin && !effectiveBranch?.id) return toast.error('Select a branch from the top bar first');
     if (!cart.length) return toast.error('Cart is empty');
     if (paid < total && paymentMethod !== 'credit') return toast.error('Paid amount is less than total');
     saleMutation.mutate({
@@ -389,6 +394,23 @@ export default function POS() {
   /* ══════════════════════════════════════════════════════════ */
   return (
     <>
+      {/* Branch context banner for super_admin */}
+      {isSuperAdmin && (
+        <div className={`mx-4 mt-3 lg:mx-4 px-4 py-2.5 rounded-xl flex items-center gap-3 text-sm ${
+          effectiveBranch?.id
+            ? 'bg-green-50 border border-green-200 text-green-800'
+            : 'bg-amber-50 border border-amber-200 text-amber-800'
+        }`}>
+          <span className="text-base">{effectiveBranch?.id ? '📍' : '⚠️'}</span>
+          <div className="flex-1">
+            {effectiveBranch?.id
+              ? <><span className="font-semibold">Selling from: {effectiveBranch.name}</span> — stock and sales will be recorded to this branch</>
+              : <><span className="font-semibold">No branch selected.</span> Select a branch from the top bar before making a sale.</>
+            }
+          </div>
+        </div>
+      )}
+
       {/* ── DESKTOP ── */}
       <div className="hidden lg:flex h-[calc(100vh-56px)] gap-4 p-4 overflow-hidden">
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
