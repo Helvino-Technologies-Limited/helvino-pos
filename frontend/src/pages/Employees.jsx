@@ -54,7 +54,7 @@ export default function Employees() {
       page, limit: 20, search,
       ...(filterBranch ? { branch_id: filterBranch } : {}),
     }),
-    select: r => r.data,
+    select: r => r.data?.data,
   });
 
   const createMutation = useMutation({
