@@ -7,7 +7,6 @@ const logger = require('../utils/logger');
 
 const login = async (req, res) => {
   const { email, password } = req.body;
-
   const result = await query(
     `SELECT e.*, b.name as branch_name
      FROM employees e
@@ -15,39 +14,16 @@ const login = async (req, res) => {
      WHERE e.email = $1`,
     [email.toLowerCase().trim()]
   );
-
-  if (result.rows.length === 0) {
-    return unauthorized(res, 'Invalid email or password');
-  }
-
+  if (!result.rows.length) return unauthorized(res, 'Invalid email or password');
   const employee = result.rows[0];
-
-  if (!employee.is_active) {
-    return unauthorized(res, 'Account is inactive. Contact administrator.');
-  }
-
+  if (!employee.is_active) return unauthorized(res, 'Account is inactive. Contact administrator.');
   const isValid = await bcrypt.compare(password, employee.password_hash);
-  if (!isValid) {
-    return unauthorized(res, 'Invalid email or password');
-  }
-
-  await query(
-    'UPDATE employees SET last_login = NOW() WHERE id = $1',
-    [employee.id]
-  );
-
-  const payload = {
-    id: employee.id,
-    role: employee.role,
-    branch_id: employee.branch_id,
-  };
-
+  if (!isValid) return unauthorized(res, 'Invalid email or password');
+  await query('UPDATE employees SET last_login = NOW() WHERE id = $1', [employee.id]);
+  const payload = { id: employee.id, role: employee.role, branch_id: employee.branch_id };
   const token = jwt.sign(payload, jwtConfig.secret, { expiresIn: jwtConfig.expiresIn });
-
   const { password_hash, pin_hash, ...safeEmployee } = employee;
-
   logger.info(`User logged in: ${employee.email} [${employee.role}]`);
-
   return success(res, { token, user: safeEmployee }, 'Login successful');
 };
 
@@ -63,31 +39,41 @@ const getProfile = async (req, res) => {
   return success(res, result.rows[0]);
 };
 
+const updateProfile = async (req, res) => {
+  const { name, email, phone } = req.body;
+  const updates = [];
+  const params = [];
+  let i = 1;
+
+  if (name)  { updates.push(`name = $${i++}`);  params.push(name); }
+  if (email) { updates.push(`email = $${i++}`); params.push(email.toLowerCase().trim()); }
+  if (phone !== undefined) { updates.push(`phone = $${i++}`); params.push(phone || null); }
+
+  if (!updates.length) return badRequest(res, 'No fields to update');
+
+  params.push(req.user.id);
+  const result = await query(
+    `UPDATE employees SET ${updates.join(', ')} WHERE id = $${i}
+     RETURNING id, name, email, phone, role, branch_id, is_active, last_login, created_at`,
+    params
+  );
+  return success(res, result.rows[0], 'Profile updated successfully');
+};
+
 const changePassword = async (req, res) => {
   const { current_password, new_password } = req.body;
-
-  const result = await query(
-    'SELECT password_hash FROM employees WHERE id = $1',
-    [req.user.id]
-  );
-
+  const result = await query('SELECT password_hash FROM employees WHERE id = $1', [req.user.id]);
   const isValid = await bcrypt.compare(current_password, result.rows[0].password_hash);
   if (!isValid) return badRequest(res, 'Current password is incorrect');
-
   const hash = await bcrypt.hash(new_password, 12);
   await query('UPDATE employees SET password_hash = $1 WHERE id = $2', [hash, req.user.id]);
-
   return success(res, {}, 'Password changed successfully');
 };
 
 const refreshToken = async (req, res) => {
-  const payload = {
-    id: req.user.id,
-    role: req.user.role,
-    branch_id: req.user.branch_id,
-  };
+  const payload = { id: req.user.id, role: req.user.role, branch_id: req.user.branch_id };
   const token = jwt.sign(payload, jwtConfig.secret, { expiresIn: jwtConfig.expiresIn });
   return success(res, { token }, 'Token refreshed');
 };
 
-module.exports = { login, getProfile, changePassword, refreshToken };
+module.exports = { login, getProfile, updateProfile, changePassword, refreshToken };

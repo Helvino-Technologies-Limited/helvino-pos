@@ -149,3 +149,17 @@ export const mpesaApi = {
   stkPush: (data) => api.post('/payments/mpesa/stk-push', data),
   checkStatus: (id) => api.get(`/payments/mpesa/status/${id}`),
 };
+
+// ── Profile ──────────────────────────────────────────────────
+export const profileApi = {
+  get:            ()     => api.get('/auth/profile'),
+  update:         (data) => api.put('/auth/profile', data),
+  changePassword: (data) => api.put('/auth/change-password', data),
+};
+
+// ── Settings ─────────────────────────────────────────────────
+export const settingsApi = {
+  get:            ()     => api.get('/settings'),
+  updateBusiness: (data) => api.put('/settings/business', data),
+  updateReceipt:  (data) => api.put('/settings/receipt', data),
+};
