@@ -16,10 +16,13 @@ module.exports = {
   PORT: parseInt(process.env.PORT) || 5000,
   db: {
     host: process.env.DB_HOST,
-    port: parseInt(process.env.DB_PORT),
+    port: parseInt(process.env.DB_PORT) || 5432,
     database: process.env.DB_NAME,
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
+    ssl: {
+      rejectUnauthorized: false,
+    },
   },
   jwt: {
     secret: process.env.JWT_SECRET,
@@ -39,12 +42,12 @@ module.exports = {
   },
   smtp: {
     host: process.env.SMTP_HOST,
-    port: parseInt(process.env.SMTP_PORT),
+    port: parseInt(process.env.SMTP_PORT) || 587,
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
     from: process.env.SMTP_FROM,
   },
-  frontendUrl: process.env.FRONTEND_URL || 'http://localhost:3000',
+  frontendUrl: process.env.FRONTEND_URL || 'https://book-iota-two.vercel.app',
   rateLimit: {
     windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 900000,
     max: parseInt(process.env.RATE_LIMIT_MAX) || 500,

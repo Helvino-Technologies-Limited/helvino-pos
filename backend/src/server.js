@@ -5,7 +5,6 @@ const cors = require('cors');
 const morgan = require('morgan');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
-const path = require('path');
 const fs = require('fs');
 
 const { PORT, frontendUrl, rateLimit: rateLimitConfig, NODE_ENV } = require('./config/env');
@@ -13,20 +12,33 @@ const logger = require('./utils/logger');
 const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
 const { pool } = require('./config/db');
 
-// Ensure logs directory exists
-if (!fs.existsSync('logs')) fs.mkdirSync('logs');
+if (!fs.existsSync('logs')) fs.mkdirSync('logs', { recursive: true });
 
 const app = express();
+
+// Trust Render's proxy
+app.set('trust proxy', 1);
 
 // ============================
 // SECURITY MIDDLEWARE
 // ============================
-app.use(helmet({
-  contentSecurityPolicy: NODE_ENV === 'production',
-}));
+app.use(helmet({ contentSecurityPolicy: false }));
+
+const allowedOrigins = [
+  'https://book-iota-two.vercel.app',
+  'http://localhost:3000',
+  'http://localhost:5173',
+  frontendUrl,
+].filter(Boolean);
 
 app.use(cors({
-  origin: [frontendUrl, 'http://localhost:3000', 'http://localhost:5173'],
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error(`CORS blocked: ${origin}`));
+    }
+  },
   credentials: true,
   methods: ['GET','POST','PUT','DELETE','PATCH','OPTIONS'],
   allowedHeaders: ['Content-Type','Authorization','X-Requested-With'],
@@ -40,7 +52,6 @@ app.use(rateLimit({
   legacyHeaders: false,
 }));
 
-// Stricter limit on auth endpoints
 app.use('/api/auth/login', rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 20,
@@ -76,20 +87,20 @@ app.get('/health', async (req, res) => {
   }
 });
 
-app.use('/api/auth',       require('./routes/auth'));
-app.use('/api/dashboard',  require('./routes/dashboard'));
-app.use('/api/products',   require('./routes/products'));
-app.use('/api/categories', require('./routes/categories'));
-app.use('/api/sales',      require('./routes/sales'));
-app.use('/api/customers',  require('./routes/customers'));
-app.use('/api/internet',   require('./routes/internet'));
-app.use('/api/computers',  require('./routes/computers'));
-app.use('/api/employees',  require('./routes/employees'));
-app.use('/api/shifts',     require('./routes/shifts'));
-app.use('/api/expenses',   require('./routes/expenses'));
-app.use('/api/reports',    require('./routes/reports'));
-app.use('/api/suppliers',  require('./routes/suppliers'));
-app.use('/api/services',   require('./routes/services'));
+app.use('/api/auth',           require('./routes/auth'));
+app.use('/api/dashboard',      require('./routes/dashboard'));
+app.use('/api/products',       require('./routes/products'));
+app.use('/api/categories',     require('./routes/categories'));
+app.use('/api/sales',          require('./routes/sales'));
+app.use('/api/customers',      require('./routes/customers'));
+app.use('/api/internet',       require('./routes/internet'));
+app.use('/api/computers',      require('./routes/computers'));
+app.use('/api/employees',      require('./routes/employees'));
+app.use('/api/shifts',         require('./routes/shifts'));
+app.use('/api/expenses',       require('./routes/expenses'));
+app.use('/api/reports',        require('./routes/reports'));
+app.use('/api/suppliers',      require('./routes/suppliers'));
+app.use('/api/services',       require('./routes/services'));
 app.use('/api/payments/mpesa', require('./routes/mpesa'));
 
 // ============================
@@ -99,33 +110,26 @@ app.use(notFoundHandler);
 app.use(errorHandler);
 
 // ============================
-// START
+// START SERVER
 // ============================
-const server = app.listen(PORT, () => {
+const server = app.listen(PORT, '0.0.0.0', () => {
   logger.info(`🚀 Helvino POS API running on port ${PORT} [${NODE_ENV}]`);
-  logger.info(`📡 Health check: http://localhost:${PORT}/health`);
-  logger.info(`🏢 Powered by Helvino Technologies Limited`);
+  logger.info(`📡 Health: http://localhost:${PORT}/health`);
+  logger.info(`🌐 CORS allowed for: ${allowedOrigins.join(', ')}`);
 });
 
-// Graceful shutdown
 const shutdown = async (signal) => {
-  logger.info(`${signal} received. Shutting down gracefully...`);
+  logger.info(`${signal} - Shutting down...`);
   server.close(async () => {
     await pool.end();
-    logger.info('Server closed.');
     process.exit(0);
   });
   setTimeout(() => process.exit(1), 10000);
 };
 
 process.on('SIGTERM', () => shutdown('SIGTERM'));
-process.on('SIGINT', () => shutdown('SIGINT'));
-process.on('unhandledRejection', (reason) => {
-  logger.error('Unhandled Rejection:', reason);
-});
-process.on('uncaughtException', (err) => {
-  logger.error('Uncaught Exception:', err);
-  process.exit(1);
-});
+process.on('SIGINT',  () => shutdown('SIGINT'));
+process.on('unhandledRejection', (reason) => logger.error('Unhandled Rejection:', reason));
+process.on('uncaughtException', (err) => { logger.error('Uncaught Exception:', err); process.exit(1); });
 
 module.exports = app;
