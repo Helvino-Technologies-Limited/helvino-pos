@@ -178,3 +178,10 @@ export const branchesApi = {
 export const notificationsApi = {
   list: () => api.get('/notifications'),
 };
+
+// ── Computers ─────────────────────────────────────────────────
+export const computersApi = {
+  list:   ()         => api.get('/computers'),
+  create: (data)     => api.post('/computers', data),
+  update: (id, data) => api.put(`/computers/${id}`, data),
+};
