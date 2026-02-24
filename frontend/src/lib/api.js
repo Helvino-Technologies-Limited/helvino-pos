@@ -173,3 +173,8 @@ export const branchesApi = {
   summary:    (id)   => api.get(`/branches/${id}/summary`),
   comparison: (p)    => api.get('/reports/branches/comparison', { params: p }),
 };
+
+// ── Notifications ─────────────────────────────────────────────
+export const notificationsApi = {
+  list: () => api.get('/notifications'),
+};

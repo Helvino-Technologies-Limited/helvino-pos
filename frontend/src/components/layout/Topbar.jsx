@@ -1,6 +1,7 @@
-import { Menu, Bell } from 'lucide-react';
+import { Menu } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { formatDate } from '../../lib/utils';
+import { NotificationPanel } from './NotificationPanel';
 
 export const Topbar = ({ onMenuClick, title }) => {
   const { user } = useAuthStore();
@@ -19,11 +20,12 @@ export const Topbar = ({ onMenuClick, title }) => {
         <div className="w-7 h-7 rounded-lg bg-primary-600 flex items-center justify-center flex-shrink-0">
           <span className="text-white text-xs font-black">H</span>
         </div>
-        <span className="font-black text-sm text-surface-900" style={{ fontFamily:"'Syne',sans-serif" }}>
+        <span className="font-black text-sm text-surface-900" style={{ fontFamily: "'Syne',sans-serif" }}>
           Helvino
         </span>
       </div>
 
+      {/* Desktop title */}
       <div className="flex-1 hidden lg:block">
         <h1 className="font-display text-base font-semibold text-surface-900">{title}</h1>
         <p className="text-xs text-surface-400">{today}</p>
@@ -34,11 +36,9 @@ export const Topbar = ({ onMenuClick, title }) => {
         <h1 className="text-sm font-semibold text-surface-900">{title}</h1>
       </div>
 
+      {/* Right side */}
       <div className="flex items-center gap-2">
-        <button className="relative p-2 rounded-xl text-surface-500 hover:bg-surface-100 transition-colors">
-          <Bell size={18} />
-          <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-primary-500 rounded-full" />
-        </button>
+        <NotificationPanel />
         <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center">
           <span className="text-xs font-bold text-primary-700">{user?.name?.[0]?.toUpperCase()}</span>
         </div>
