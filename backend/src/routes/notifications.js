@@ -14,68 +14,79 @@ router.get('/', async (req, res) => {
   const notifications = [];
 
   const [lowStock, outOfStock, unpaidSessions, openShifts, unpaidSales] = await Promise.all([
-    // Low stock products
+
+    // Low stock — qualify ALL columns with table alias
     query(
-      `SELECT id, name, quantity, reorder_level, branch_id,
+      `SELECT p.id, p.name, p.quantity, p.reorder_level, p.branch_id,
               b.name as branch_name
        FROM products p
        LEFT JOIN branches b ON p.branch_id = b.id
        WHERE p.is_active = true
-       AND p.quantity > 0
-       AND p.quantity <= p.reorder_level
-       ${bf ? 'AND p.branch_id = $1' : ''}
+         AND p.quantity > 0
+         AND p.quantity <= p.reorder_level
+         ${bf ? 'AND p.branch_id = $1' : ''}
        ORDER BY p.quantity ASC LIMIT 10`,
       bf ? [bf] : []
     ),
+
     // Out of stock
     query(
-      `SELECT id, name, branch_id, b.name as branch_name
+      `SELECT p.id, p.name, p.branch_id, b.name as branch_name
        FROM products p
        LEFT JOIN branches b ON p.branch_id = b.id
-       WHERE p.is_active = true AND p.quantity = 0
-       ${bf ? 'AND p.branch_id = $1' : ''}
+       WHERE p.is_active = true
+         AND p.quantity = 0
+         ${bf ? 'AND p.branch_id = $1' : ''}
        LIMIT 10`,
       bf ? [bf] : []
     ),
-    // Internet sessions unpaid > 1 hour
+
+    // Unpaid internet sessions — use correct column names
     query(
-      `SELECT i.id, i.computer_name, i.actual_duration_minutes,
-              i.cost, c.name as customer_name,
+      `SELECT i.id,
+              c2.name as computer_name,
+              i.actual_duration_minutes,
+              i.cost,
+              cu.name as customer_name,
               b.name as branch_name
        FROM internet_sessions i
-       LEFT JOIN customers c ON i.customer_id = c.id
-       LEFT JOIN branches b ON i.branch_id = b.id
+       LEFT JOIN computers c2  ON i.computer_id = c2.id
+       LEFT JOIN customers cu  ON i.customer_id  = cu.id
+       LEFT JOIN branches  b   ON i.branch_id    = b.id
        WHERE i.status = 'unpaid'
-       AND i.end_time IS NOT NULL
-       ${bf ? 'AND i.branch_id = $1' : ''}
+         AND i.end_time IS NOT NULL
+         ${bf ? 'AND i.branch_id = $1' : ''}
        ORDER BY i.end_time ASC LIMIT 5`,
       bf ? [bf] : []
     ),
+
     // Shifts open > 12 hours
     query(
-      `SELECT s.id, s.start_time, e.name as employee_name,
+      `SELECT s.id, s.start_time,
+              e.name as employee_name,
               b.name as branch_name,
               EXTRACT(EPOCH FROM (NOW() - s.start_time))/3600 as hours_open
        FROM shifts s
        LEFT JOIN employees e ON s.employee_id = e.id
-       LEFT JOIN branches b ON s.branch_id = b.id
+       LEFT JOIN branches  b ON s.branch_id   = b.id
        WHERE s.end_time IS NULL
-       AND s.start_time < NOW() - INTERVAL '12 hours'
-       ${bf ? 'AND s.branch_id = $1' : ''}
+         AND s.start_time < NOW() - INTERVAL '12 hours'
+         ${bf ? 'AND s.branch_id = $1' : ''}
        LIMIT 5`,
       bf ? [bf] : []
     ),
-    // Unpaid/credit sales today
+
+    // Partial/unpaid sales last 7 days
     query(
       `SELECT s.id, s.receipt_number, s.total,
-              c.name as customer_name,
-              b.name as branch_name
+              cu.name as customer_name,
+              b.name  as branch_name
        FROM sales s
-       LEFT JOIN customers c ON s.customer_id = c.id
-       LEFT JOIN branches b ON s.branch_id = b.id
+       LEFT JOIN customers cu ON s.customer_id = cu.id
+       LEFT JOIN branches  b  ON s.branch_id   = b.id
        WHERE s.payment_status = 'partial'
-       AND DATE(s.created_at) >= CURRENT_DATE - INTERVAL '7 days'
-       ${bf ? 'AND s.branch_id = $1' : ''}
+         AND DATE(s.created_at) >= CURRENT_DATE - INTERVAL '7 days'
+         ${bf ? 'AND s.branch_id = $1' : ''}
        ORDER BY s.created_at DESC LIMIT 5`,
       bf ? [bf] : []
     ),
@@ -107,7 +118,7 @@ router.get('/', async (req, res) => {
     type:     'warning',
     category: 'internet',
     title:    'Unpaid Session',
-    message:  `${s.computer_name} — KES ${parseFloat(s.cost).toFixed(0)} unpaid`,
+    message:  `${s.computer_name || 'Unknown PC'} — KES ${parseFloat(s.cost || 0).toFixed(0)} unpaid`,
     branch:   s.branch_name,
     link:     '/internet',
   }));
@@ -132,10 +143,7 @@ router.get('/', async (req, res) => {
     link:     '/sales',
   }));
 
-  return success(res, {
-    count: notifications.length,
-    notifications,
-  });
+  return success(res, { count: notifications.length, notifications });
 });
 
 module.exports = router;
