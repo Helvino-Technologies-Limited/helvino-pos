@@ -357,40 +357,55 @@ export default function InternetSessions() {
               </div>
             ) : (
               (activeSessions || []).map(s => (
-                <div key={s.id} className="card p-4 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                <div key={s.id} className={`card p-4 flex flex-col sm:flex-row items-start sm:items-center gap-4 border-l-4 ${
+                  s.status === 'unpaid' ? 'border-l-amber-400' : 'border-l-blue-400'
+                }`}>
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center flex-shrink-0">
-                      <Monitor size={18} className="text-blue-600" />
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                      s.status === 'unpaid' ? 'bg-amber-100' : 'bg-blue-100'
+                    }`}>
+                      <Monitor size={18} className={s.status === 'unpaid' ? 'text-amber-600' : 'text-blue-600'} />
                     </div>
                     <div>
-                      <p className="font-medium text-surface-900 text-sm">
-                        {s.computer_name}
-                        <span className="text-surface-400 ml-1">#{s.station_number}</span>
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium text-surface-900 text-sm">
+                          {s.computer_name}
+                          <span className="text-surface-400 ml-1">#{s.station_number}</span>
+                        </p>
+                        <span className={`badge text-[10px] ${s.status === 'unpaid' ? 'badge-yellow' : 'badge-blue'}`}>
+                          {s.status === 'unpaid' ? '⏸ Awaiting Payment' : '▶ Running'}
+                        </span>
+                      </div>
                       <p className="text-xs text-surface-500">{s.customer_name || 'Guest'} · {s.ticket_number}</p>
                     </div>
                   </div>
                   <div className="flex gap-4 sm:gap-6 ml-0 sm:ml-auto">
                     {[
-                      { label: 'Started',  val: formatTime(s.start_time)                 },
-                      { label: 'Duration', val: formatDuration(s.current_duration_minutes)},
-                      { label: 'Amount',   val: formatCurrency(s.current_cost), bold: true},
-                    ].map(({ label, val, bold }) => (
+                      { label: 'Started',  val: formatTime(s.start_time) },
+                      { label: 'Duration', val: formatDuration(s.current_duration_minutes) },
+                      { label: s.status === 'unpaid' ? 'Balance Due' : 'Amount',
+                        val: formatCurrency(s.current_cost), bold: true,
+                        color: s.status === 'unpaid' ? 'text-amber-600' : 'text-primary-600' },
+                    ].map(({ label, val, bold, color }) => (
                       <div key={label} className="text-center">
                         <p className="text-xs text-surface-400">{label}</p>
-                        <p className={`text-sm ${bold ? 'font-bold text-primary-600' : 'font-medium'}`}>{val}</p>
+                        <p className={`text-sm font-bold ${color || 'text-surface-800'}`}>{val}</p>
                       </div>
                     ))}
                   </div>
                   <div className="flex gap-2">
-                    <button onClick={() => { setShowPayModal(s); setPayAmount(''); }}
-                      className="btn btn-secondary btn-sm">
-                      <DollarSign size={12} /> Pay
+                    {/* Always show Pay button */}
+                    <button onClick={() => { setShowPayModal(s); setPayAmount(s.status === 'unpaid' ? String(Math.ceil(s.current_cost)) : ''); }}
+                      className={`btn btn-sm ${s.status === 'unpaid' ? 'btn-primary' : 'btn-secondary'}`}>
+                      <DollarSign size={12} /> {s.status === 'unpaid' ? 'Collect Payment' : 'Pay'}
                     </button>
-                    <button onClick={() => setShowEndModal(s)}
-                      className="btn btn-danger btn-sm">
-                      <Square size={12} /> End
-                    </button>
+                    {/* End button only for running sessions */}
+                    {s.status === 'active' && (
+                      <button onClick={() => setShowEndModal(s)}
+                        className="btn btn-danger btn-sm">
+                        <Square size={12} /> End
+                      </button>
+                    )}
                   </div>
                 </div>
               ))
@@ -601,18 +616,54 @@ export default function InternetSessions() {
       <Modal open={!!showPayModal} onClose={() => setShowPayModal(null)} title="Collect Payment" size="sm">
         {showPayModal && (
           <div className="space-y-4">
-            <div className="bg-surface-50 rounded-xl p-4 text-center">
-              <p className="text-xs text-surface-500 mb-1">Amount Due</p>
-              <p className="text-2xl font-black text-surface-900" style={{ fontFamily:"'Syne',sans-serif" }}>
+            {/* Session summary */}
+            <div className={`rounded-xl p-4 text-center ${showPayModal.status === 'unpaid' ? 'bg-amber-50 border border-amber-200' : 'bg-surface-50'}`}>
+              <p className="text-xs text-surface-500 mb-1">
+                {showPayModal.status === 'unpaid' ? 'Balance Due (Session Ended)' : 'Current Amount'}
+              </p>
+              <p className="text-3xl font-black text-surface-900" style={{ fontFamily:"'Syne',sans-serif" }}>
                 {formatCurrency(showPayModal.current_cost)}
               </p>
-              <p className="text-xs text-surface-400 mt-1">{showPayModal.computer_name} · {showPayModal.ticket_number}</p>
+              <p className="text-xs text-surface-400 mt-1">
+                {showPayModal.computer_name} · {showPayModal.ticket_number}
+              </p>
+              {showPayModal.status === 'unpaid' && (
+                <p className="text-xs text-amber-600 font-medium mt-1">
+                  Duration: {formatDuration(showPayModal.current_duration_minutes)}
+                </p>
+              )}
             </div>
-            <FormField label="Amount">
+            {/* Quick amount buttons */}
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { label: 'Exact', val: Math.ceil(showPayModal.current_cost) },
+                { label: 'Round 50', val: Math.ceil(showPayModal.current_cost / 50) * 50 },
+                { label: 'Round 100', val: Math.ceil(showPayModal.current_cost / 100) * 100 },
+              ].map(q => (
+                <button key={q.label} onClick={() => setPayAmount(String(q.val))}
+                  className={`p-2 rounded-xl border-2 text-xs font-semibold transition-all ${
+                    payAmount === String(q.val)
+                      ? 'border-primary-500 bg-primary-50 text-primary-700'
+                      : 'border-surface-200 hover:border-surface-300 text-surface-600'
+                  }`}>
+                  {q.label}<br/>
+                  <span className="font-bold">KES {q.val}</span>
+                </button>
+              ))}
+            </div>
+            <FormField label="Amount Received (KES)">
               <input type="number" value={payAmount} onChange={e => setPayAmount(e.target.value)}
-                className="input text-lg font-bold" autoFocus />
+                className="input text-lg font-bold text-center" autoFocus placeholder="0" />
             </FormField>
-            <FormField label="Method">
+            {payAmount && parseFloat(payAmount) > parseFloat(showPayModal.current_cost) && (
+              <div className="p-3 bg-green-50 border border-green-200 rounded-xl text-center">
+                <p className="text-xs text-green-600">Change to give</p>
+                <p className="text-xl font-bold text-green-700">
+                  {formatCurrency(parseFloat(payAmount) - Math.ceil(showPayModal.current_cost))}
+                </p>
+              </div>
+            )}
+            <FormField label="Payment Method">
               <Select value={payMethod} onChange={e => setPayMethod(e.target.value)}
                 options={[
                   { value: 'cash',  label: 'Cash'   },
@@ -621,9 +672,11 @@ export default function InternetSessions() {
             </FormField>
             <button
               onClick={() => payMutation.mutate({ id: showPayModal.id, data: { amount: payAmount, payment_method: payMethod } })}
-              disabled={!payAmount || payMutation.isPending}
-              className="btn btn-primary w-full justify-center py-3">
-              {payMutation.isPending ? '...' : 'Confirm Payment'}
+              disabled={!payAmount || parseFloat(payAmount) <= 0 || payMutation.isPending}
+              className="btn btn-primary w-full justify-center py-3 text-base">
+              {payMutation.isPending
+                ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                : <><DollarSign size={16} /> Confirm Payment</>}
             </button>
           </div>
         )}
