@@ -101,7 +101,7 @@ export const internetApi = {
   history:   (p)        => api.get('/internet/history', { params: p }),
   start:     (data)     => api.post('/internet/start', data),
   end:       (id, data) => api.put(`/internet/${id}/end`, data),
-  pay:       (id, data) => api.put(`/internet/${id}/pay`, data),
+  pay:       (id, data) => api.post(`/internet/${id}/pay`, data),
 };
 
 // ── Computers ─────────────────────────────────────────────────
